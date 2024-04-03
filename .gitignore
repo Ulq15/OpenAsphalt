@@ -45,3 +45,4 @@ env
 .vscode
 ALPR/processed_images/
 ALPR/images
+/ALPR/benchmarks
