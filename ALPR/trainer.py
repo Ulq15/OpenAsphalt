@@ -1,8 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
-import torchvision
-from torchvision.models.detection import fasterrcnn_resnet50_fpn
-from model import LPImageDataset, MultiBoxLoss, training_loop, custom_collate_fn
+from model import LPImageDataset, load_model, training_loop, custom_collate_fn
+from preprocess import to_csv
 
 # Set device
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -11,32 +10,50 @@ torch.cuda.empty_cache() if device == "cuda" else None
 
 # Load data
 path = ".\\processed_images\\data\\"
+# path = ".\\benchmarks\\endtoend\\us\\"
+# to_csv(path)
 data = LPImageDataset(path + "annotations.csv", path, device=device)
 train_loader = DataLoader(data, batch_size=8, shuffle=True, collate_fn=custom_collate_fn)
 
-# Load model
-model = fasterrcnn_resnet50_fpn(pretrained=True, progress=True)
-in_features = model.roi_heads.box_predictor.cls_score.in_features
-model.roi_heads.box_predictor = torchvision.models.detection.faster_rcnn.FastRCNNPredictor(in_features, data.num_classes)
-    
+# Load model   
+model = load_model(data.num_classes)   
+model.load_state_dict(torch.load(".\\model.pth"))
 model.to(device)
 
 # Train model
-training_loop(model, train_loader, device=device, epochs=50, lr=0.001)
+training_loop(model, train_loader, device=device, epochs=150, lr=0.001)
 
 # # Save model
-# torch.save(model.state_dict(), ".\\model.pth")
-
-# # Load model
-# model = NeuralNetwork()
-# model.load_state_dict(torch.load(".\\model.pth"))
+torch.save(model.state_dict(), ".\\model.pth")
 
 # # Evaluate model
-# model.eval()
+model.eval()
 
 # # Predict
-# image, bbox, label = data[0]
-# image = image.unsqueeze(0)
-# bbox = bbox.unsqueeze(0)
-# label = label.unsqueeze(0)
-# print(model(image, bbox, label))
+print('=='*50)
+print(f"Model Prediction: {model([data[0][0]])}")
+print('--'*50)
+print(f"Actual: {data[0]}")
+print('=='*50)
+print(f"Model Prediction: {model([data[1][0]])}")
+print('--'*50)
+print(f"Actual: {data[1]}")
+print('=='*50)
+print(f"Model Prediction: {model([data[2][0]])}")
+print('--'*50)
+print(f"Actual: {data[2]}")
+print('=='*50)
+print(f"Model Prediction: {model([data[3][0]])}")
+print('--'*50)
+print(f"Actual: {data[3]}")
+print('=='*50)
+
+
+''' During inference, the model requires only the input tensors, and returns the post-processed 
+    predictions as a List[Dict[Tensor]], one for each input image. The fields of the Dict are as
+    follows, where N is the number of detections:
+        - boxes (FloatTensor[N, 4]): the predicted boxes in [x1, y1, x2, y2] format, 
+                                        with 0 <= x1 < x2 <= W and 0 <= y1 < y2 <= H.
+        - labels (Int64Tensor[N]): the predicted labels for each detection
+        - scores (Tensor[N]): the scores of each detection
+'''
