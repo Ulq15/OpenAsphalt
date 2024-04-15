@@ -46,3 +46,4 @@ env
 ALPR/processed_images/
 ALPR/images
 /ALPR/benchmarks
+ALPR/model.pth
