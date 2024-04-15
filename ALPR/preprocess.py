@@ -3,10 +3,6 @@ import numpy as np
 from imutils import paths
 from sklearn.preprocessing import minmax_scale
 
-def normalize_image(image):
-    norm = minmax_scale(image, (0,1))
-    return norm 
-
 def get_new_coordinates(old_x, old_y, old_width, old_height, ratio, padding):
     top, left = padding
     new_x = int(old_x * ratio) + left
@@ -16,7 +12,7 @@ def get_new_coordinates(old_x, old_y, old_width, old_height, ratio, padding):
     return new_x, new_y, new_width, new_height
 
 # from https://gist.github.com/IdeaKing/11cf5e146d23c5bb219ba3508cca89ec 
-def resize_with_pad(image, new_shape, padding_color = (0, 0, 0)):
+def resize_with_pad(image, new_shape=(768,768), padding_color = (0, 0, 0)):
     """Maintains aspect ratio and resizes with padding.
     Params:
         image: Image to be resized.
@@ -39,7 +35,6 @@ def resize_with_pad(image, new_shape, padding_color = (0, 0, 0)):
 def process_image(image, target_size):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     image, ratio, padding = resize_with_pad(image, target_size)
-    # image = normalize_image(image) # leads to saving blank images so normalization needs to happen in the model
     return image, ratio, padding
 
 def show_bbox(folder_path):
@@ -97,15 +92,22 @@ def start(in_path, out_path, size):
 
 def to_csv(path):
     imagePaths = sorted(list(paths.list_images(path)))
-    with open(path+"annotations.csv", "a") as file:
-        header = "filename,x,y,width,height,class\n"
+    with open(path+"annotations.csv", "w") as file:
+        header = "filename,x_min,y_min,x_max,y_max,class\n"
         file.write(header)
         for imagePath in imagePaths:
             name = imagePath.split("\\")[-1].split(".")[0]
             with open(path+name+".txt",'r') as txt_file:
-                annotation = txt_file.readline().replace("\t",",").strip()
+                line = txt_file.readline().split("\t")
+                file_name = line[0].strip()
+                x1 = int(line[1].strip())
+                y1 = int(line[2].strip())
+                width = int(line[3].strip())
+                height = int(line[4].strip())
+                plate_text = line[5].strip()
                 # file.write(f"{name}.jpg,{annotation[1]},{annotation[2]},{annotation[3]},{annotation[4]},{annotation[5]}")
-                file.write(f"{annotation}\n")
+                file.write(f"{file_name},{x1},{y1},{x1+width},{y1+height},{plate_text}\n")
+    print("Finished to_CSV")
     
 
 if __name__ == "__main__":
