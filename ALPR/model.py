@@ -1,11 +1,12 @@
 import os
 import pandas as pd
+import numpy as np
 import torch
 from torch import nn
-import torch.nn.functional as F
+# import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, Dataset
-import torchvision
+# import torchvision
 from torchvision.io import read_image
 from torchvision import  transforms
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
@@ -29,6 +30,7 @@ class LPImageDataset(Dataset):
             # transforms.ConvertImageDtype(torch.float)
         ])
         self.label_mapping = {val: i for i, val in enumerate(self.annotations.iloc[:,5].unique())}
+        self.key_by_label = {i:val for val, i in self.label_mapping.items()}
         self.annotations.iloc[:,5] = self.annotations.iloc[:,5].map(self.label_mapping)
         self.num_classes = len(self.label_mapping)
         self.device = device
@@ -47,7 +49,6 @@ class LPImageDataset(Dataset):
         # label = torch.tensor(self.annotations.iloc[idx, 5]).to(self.device)
         # print(image.shape, annotation)
         return image, annotation
-
 
 def custom_collate_fn(batch):
     boxes =[sample['boxes'] for _,sample in batch]
@@ -107,3 +108,120 @@ def training_loop(model:nn.Module, train_loader:DataLoader, device='cpu', epochs
         # Print training statistics
         print(f'Epoch {epoch+1}/{num_epochs}, Epoch Loss: {epoch_loss}')
 
+def calculate_mAP(gt_boxes, gt_labels, pred_boxes, pred_scores, pred_labels, iou_threshold=0.5):
+    """
+    Calculate Mean Average Precision (mAP) for object detection.
+    
+    Parameters:
+        gt_boxes (numpy array): Ground truth bounding boxes of shape (N, 4).
+        gt_labels (numpy array): Ground truth class labels of shape (N,).
+        pred_boxes (numpy array): Predicted bounding boxes of shape (M, 4).
+        pred_scores (numpy array): Predicted scores/confidences of shape (M,).
+        pred_labels (numpy array): Predicted class labels of shape (M,).
+        iou_threshold (float): IoU threshold for matching predictions to ground truth.
+    
+    Returns:
+        mAP (float): Mean Average Precision.
+    """
+    # Sort predictions by confidence scores (descending order)
+    sort_indices = np.argsort(pred_scores)[::-1]
+    pred_boxes = pred_boxes[sort_indices]
+    pred_scores = pred_scores[sort_indices]
+    pred_labels = pred_labels[sort_indices]
+
+    # Initialize variables
+    true_positives = np.zeros(len(pred_boxes))
+    false_positives = np.zeros(len(pred_boxes))
+    num_gt_boxes = len(gt_boxes)
+    matched_indices = set()
+
+    # Loop over predictions
+    for i, pred_box in enumerate(pred_boxes):
+        ious = compute_iou(pred_box, gt_boxes)
+        max_iou = np.max(ious)
+        max_iou_idx = np.argmax(ious)
+
+        if max_iou >= iou_threshold and max_iou_idx not in matched_indices and gt_labels[max_iou_idx] == pred_labels[i]:
+            true_positives[i] = 1
+            matched_indices.add(max_iou_idx)
+        else:
+            false_positives[i] = 1
+
+    # Compute precision and recall
+    cumsum_tp = np.cumsum(true_positives)
+    cumsum_fp = np.cumsum(false_positives)
+    precision = cumsum_tp / (cumsum_tp + cumsum_fp)
+    recall = cumsum_tp / num_gt_boxes
+
+    # Compute AP using precision-recall curve (area under curve)
+    ap = compute_ap(precision, recall)
+    return ap
+
+def compute_iou(box1, box2):
+    """
+    Compute IoU (Intersection over Union) between two bounding boxes.
+    
+    Parameters:
+        box1, box2 (numpy arrays): Bounding boxes in format [x1, y1, x2, y2].
+    
+    Returns:
+        iou (float): IoU value.
+    """
+    x1 = max(box1[0], box2[:, 0])
+    y1 = max(box1[1], box2[:, 1])
+    x2 = min(box1[2], box2[:, 2])
+    y2 = min(box1[3], box2[:, 3])
+
+    intersection = np.maximum(x2 - x1, 0) * np.maximum(y2 - y1, 0)
+    area_box1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    area_box2 = (box2[:, 2] - box2[:, 0]) * (box2[:, 3] - box2[:, 1])
+    union = area_box1 + area_box2 - intersection
+
+    iou = intersection / union
+    return iou
+
+def compute_ap(precision, recall):
+    """
+    Compute Average Precision (AP) from precision-recall curve.
+    
+    Parameters:
+        precision, recall (numpy arrays): Precision and recall values.
+    
+    Returns:
+        ap (float): Average Precision.
+    """
+    # Append end points to the precision and recall arrays
+    recall = np.concatenate(([0], recall, [1]))
+    precision = np.concatenate(([0], precision, [0]))
+
+    # Compute area under curve
+    for i in range(len(precision) - 1, 0, -1):
+        precision[i - 1] = max(precision[i - 1], precision[i])
+
+    indices = np.where(recall[1:] != recall[:-1])[0] + 1
+    ap = np.sum((recall[indices] - recall[indices - 1]) * precision[indices])
+    return ap
+
+def calculate_metrics(model, test_loader):
+    model.eval()
+    mAPs = []
+
+    with torch.no_grad():
+        for images, targets in test_loader:
+            images = list(image for image in images)
+            outputs = model(images)
+
+            for i, output in enumerate(outputs):
+                # Calculate mAP for each image
+                gt_boxes = targets[i]['boxes'].numpy()
+                gt_labels = targets[i]['labels'].numpy()
+
+                pred_boxes = output['boxes'].numpy()
+                pred_scores = output['scores'].numpy()
+                pred_labels = output['labels'].numpy()
+
+                mAP = calculate_mAP(gt_boxes, gt_labels, pred_boxes, pred_scores, pred_labels)
+                mAPs.append(mAP)
+
+    avg_mAP = np.mean(mAPs)
+    return avg_mAP
