@@ -1,7 +1,5 @@
 import cv2
-import numpy as np
 from imutils import paths
-from sklearn.preprocessing import minmax_scale
 
 def get_new_coordinates(old_x, old_y, old_width, old_height, ratio, padding):
     top, left = padding
@@ -108,12 +106,11 @@ def to_csv(path):
                 # file.write(f"{name}.jpg,{annotation[1]},{annotation[2]},{annotation[3]},{annotation[4]},{annotation[5]}")
                 file.write(f"{file_name},{x1},{y1},{x1+width},{y1+height},{plate_text}\n")
     print("Finished to_CSV")
-    
 
 if __name__ == "__main__":
     in_path = ".\\benchmarks\\endtoend\\us\\"
     # out_path/ = ".\\processed_images\\endtoend_us\\"
-    size = (768, 768)   # Resize to 768x768 pixels, which is 1.5 * 512, total pixles: 768*768 = 589,824px
+    size = (768, 768)
     out_path = ".\\processed_images\\data\\"
     # start(in_path, out_path, size)
     show_bbox(out_path)
