@@ -16,3 +16,25 @@
     #         np.savetxt(f, y, fmt='%10.4g')  # save
     #     os.system('zip -r study.zip study_*.txt')
     #     # utils.general.plot_study_txt(f, x)  # plot
+
+
+Epoch 81/300, Epoch Loss: 17.158932004143487
+Epoch 1/50, Epoch Loss: 4.262792003080811e+18
+
+=== Strating Epoch 1/50 ===
+Epoch 1/50, Epoch Loss: 28427368.010115433
+=== Strating Epoch 2/50 ===
+Epoch 2/50, Epoch Loss: 4895630086.227695
+=== Strating Epoch 3/50 ===
+Epoch 3/50, Epoch Loss: 2734913403.419216
+=== Strating Epoch 4/50 ===
+Epoch 4/50, Epoch Loss: 46760914.67879023
+=== Strating Epoch 5/50 ===
+Epoch 5/50, Epoch Loss: 15868300587.249554
+=== Strating Epoch 6/50 ===
+Epoch 6/50, Epoch Loss: 2248736258110.719
+=== Strating Epoch 7/50 ===
+Epoch 7/50, Epoch Loss: 13142772497.397552
+=== Strating Epoch 8/50 ===
+Epoch 8/50, Epoch Loss: 20573302731.002647
+
