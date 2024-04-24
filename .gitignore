@@ -49,5 +49,11 @@ ALPR/images
 ALPR/model.pth
 ALPR/model
 *.pth
+<<<<<<< HEAD
 *.m
 *.w
+=======
+/ALPR/_env_
+/ALPR/__pycache__
+ALPR/model_3.0
+>>>>>>> 598b712f9a56ec2b57046b87db0b4a386ebbb340
