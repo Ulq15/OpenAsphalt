@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision.io import read_image
 from torchvision import transforms
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor, FasterRCNN_ResNet50_FPN_Weights
 
 
 def load_model(num_classes):
@@ -25,18 +25,18 @@ def load_model(num_classes):
 
 
 class LPImageDataset(Dataset):
-    def __init__(self, img_dir, annotations_file=None, device="cpu"):
-        self.img_dir = img_dir
-        if annotations_file is not None:
-            self.annotations = pd.read_csv(annotations_file)
-            self.label_mapping = {
-                val: i for i, val in enumerate(self.annotations.iloc[:, 5].unique())
-            }
-            self.key_by_label = {i: val for val, i in self.label_mapping.items()}
-            self.annotations.iloc[:, 5] = self.annotations.iloc[:, 5].map(
-                self.label_mapping
-            )
-            self.num_classes = len(self.label_mapping)
+    def __init__(self, data_dir, annotations_file, device="cpu"):
+        self.data_dir = data_dir
+        self.annotations = pd.read_csv(annotations_file)
+        self.images = self.annotations.iloc[:, 0].unique()
+        self.label_to_key = {
+            label: idx for idx, label in enumerate(self.annotations.iloc[:, 5].unique())
+        }
+        self.key_to_label = {idx: label for label, idx in self.label_to_key.items()}
+        self.annotations.iloc[:, 5] = self.annotations.iloc[:, 5].map(
+            self.label_to_key
+        )
+        self.num_classes = len(self.label_to_key)
         # self.transform = transforms.Compose([
         #     transforms.Grayscale(3),
         # #     transforms.Lambda(lambd=resize_with_pad),
@@ -47,29 +47,27 @@ class LPImageDataset(Dataset):
         self.device = device
 
     def __len__(self):
-        return len(self.annotations)
+        return len(self.images)
 
     def __getitem__(self, idx):
-        img_path = os.path.join(self.img_dir, self.annotations.iloc[idx, 0])
+        img_path = os.path.join(self.data_dir, self.images[idx])
         image = read_image(img_path).to(self.device)
         # image = self.transform(image)
         image = image.float() / 255.0
+        img_annotation = self.annotations[self.annotations['filename'].str.contains(self.images[idx])]
         annotation = {
             "boxes": torch.tensor(
-                self.annotations.iloc[idx, 1:5].values.astype(dtype=int)
+                img_annotation.iloc[:, 1:5].to_numpy(dtype=np.int64)
             ).to(self.device),
-            "labels": torch.tensor([self.annotations.iloc[idx, 5]]).to(self.device),
+            "labels": torch.tensor(img_annotation.iloc[:, 5].to_numpy(dtype=np.int64)).to(self.device),
         }
-        # bbox = torch.tensor(self.annotations.iloc[idx, 1:5].values.astype(int).tolist()).to(self.device)
-        # label = torch.tensor(self.annotations.iloc[idx, 5]).to(self.device)
-        # print(image.shape, annotation)
         return image, annotation
 
 
 class UnlabeledLPImageDataset(Dataset):
-    def __init__(self, img_dir, device="cpu"):
-        self.img_dir = img_dir
-        self.images = sorted(list(paths.list_images(img_dir)))
+    def __init__(self, data_dir, device="cpu"):
+        self.data_dir = data_dir
+        self.images = sorted(list(paths.list_images(data_dir)))
         self.device = device
         self.transform = transforms.Compose([
             transforms.Grayscale(3),
@@ -90,7 +88,20 @@ class UnlabeledLPImageDataset(Dataset):
         return image
 
 
-def custom_collate_fn(batch):
+def multilabel_collate_fn(batch):
+    boxes = [sample["boxes"] for _, sample in batch]
+    labels = [sample["labels"] for _, sample in batch]
+    targets = [
+        {
+            "boxes": box.clone().detach(),
+            "labels": label.clone().detach(),
+        }
+        for box, label in zip(boxes, labels)
+    ]
+    tensors = torch.stack([sample for sample, _ in batch])
+    return tensors, targets
+
+def single_label_collate_fn(batch):
     boxes = [sample["boxes"] for _, sample in batch]
     labels = [sample["labels"] for _, sample in batch]
     targets = [
@@ -104,7 +115,7 @@ def custom_collate_fn(batch):
     return tensors, targets
 
 
-def training_loop(model: nn.Module, train_loader: DataLoader, device="cpu", epochs=50, lr=0.001, step_size=10, model_file='.\\model', weight_file='.\\weights'):
+def training_loop(model: nn.Module, train_loader: DataLoader, device="cpu", epochs=50, lr=0.001, step_size=10, save_filename=''):
     # Define optimizer and learning rate scheduler
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=0.1)
@@ -137,8 +148,8 @@ def training_loop(model: nn.Module, train_loader: DataLoader, device="cpu", epoc
 
         if (epoch + 1) % step_size == 0:
             print(f"Saving model...")
-            torch.save(model, model_file)
-            torch.save(model.state_dict(), weight_file if weight_file else ".\\weights")
+            torch.save(model, '.\\'+save_filename+'.m')
+            torch.save(model.state_dict(), ('.\\'+save_filename+'.w'))
             print(f"Saving Done.")
 
 
