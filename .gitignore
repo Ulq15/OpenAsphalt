@@ -49,3 +49,5 @@ ALPR/images
 ALPR/model.pth
 ALPR/model
 *.pth
+*.m
+*.w
