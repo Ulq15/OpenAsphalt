@@ -11,7 +11,7 @@ torch.cuda.empty_cache() if device == "cuda" else None
 # # Load data
 # path = ".\\processed_images\\data\\"
 
-path = ".\\processed_images\\License_Plate_tensorflow\\train\\"
+path = ".\\processed_images\\dheeraj.v17i\\train\\"
 data = LPImageDataset(path, path + "annotations.csv", device=device)
 train_loader = DataLoader(
     data, batch_size=8, shuffle=True, collate_fn=custom_collate_fn
@@ -20,8 +20,8 @@ train_loader = DataLoader(
 # test_loader = DataLoader(test_data, batch_size=2, shuffle=True)
 
 # # Load model
-# model = load_model(data.num_classes)
-model = torch.load(".\\model_3.0")
+model = load_model(data.num_classes)
+# model = torch.load(".\\model_3.0")
 # model.load_state_dict(torch.load(".\\model_2.0.pth"))
 model.to(device)
 
