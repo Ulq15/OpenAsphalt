@@ -116,7 +116,6 @@ def to_csv(path):
                 width = int(line[3].strip())
                 height = int(line[4].strip())
                 plate_text = line[5].strip()
-                # file.write(f"{name}.jpg,{annotation[1]},{annotation[2]},{annotation[3]},{annotation[4]},{annotation[5]}")
                 file.write(
                     f"{file_name},{x1},{y1},{x1+width},{y1+height},{plate_text}\n"
                 )
@@ -146,5 +145,5 @@ if __name__ == "__main__":
     # start(in_path, out_path, size)
     # show_bbox(out_path)
     # to_csv(out_path)
-    path = ".\\processed_images\\License_Plate_tensorflow\\test\\"
+    path = ".\\processed_images\\dheeraj.v17i\\valid\\"
     # convert_annotations(path)
