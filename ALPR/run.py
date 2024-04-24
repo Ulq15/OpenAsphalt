@@ -48,7 +48,7 @@ def train(args, model:nn.Module, dataset):
         dataset,
         batch_size=args.batch_size,
         shuffle=True,
-        collate_fn=custom_collate_fn,
+        collate_fn=multilabel_collate_fn,
     )
 
     model.train()
@@ -59,9 +59,14 @@ def train(args, model:nn.Module, dataset):
         epochs=args.epochs,
         lr=args.lr,
         step_size=args.step_size,
-        model_file=args.model_file,
-        weight_file=args.weight_file,
+        save_filename=args.save_to
     )
+    torch.save(model, '.\\'+args.save_to+'.m')
+    torch.save(model.state_dict(), ('.\\'+args.save_to+'.w'))
+    
+    model.eval()
+    avg_mAP = calculate_metrics(model, data_loader)
+    print(f"Average MAP on Training Data: {avg_mAP}")
 
 
 def setup(args):
@@ -74,7 +79,8 @@ def setup(args):
     # print(f"Using {args.device} device")
 
     if args.mode == "pred":
-        model = load_model(2).to(device=args.device)
+        model = torch.load(args.model_file)
+        model.to(device=args.device)
         model.load_state_dict(torch.load(args.weight_file))
         return predict(args, model)
 
@@ -99,7 +105,7 @@ def setup(args):
 
     if args.mode == "train":
         train(args, model, dataset)
-    elif args.mode == "val":
+    elif args.mode == "valid":
         validate(args, model, dataset)
     elif args.mode == "test":
         test(args, model, dataset)
@@ -108,7 +114,7 @@ def setup(args):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(prog="run.py")
-    parser.add_argument("--mode", default="val", help="one of ['train', 'val', 'test', 'pred']")
+    parser.add_argument("--mode", default="val", help="one of ['train', 'valid', 'test', 'pred']")
     parser.add_argument(
         "--dataset",
         type=str,
@@ -136,6 +142,11 @@ if __name__ == "__main__":
         type=float,
         default=10,
         help="the number steps for the optimizer to apply learning rate decay",
+    )
+    parser.add_argument(
+        "--save_to",
+        type=str,
+        help="save model & weights to 2 files during training, with .m for model file & .w for weights",
     )
     parser.add_argument("--image", type=str, default="", help="Path to single image for the model to evaluate")
     # parser.add_argument('--nosave', action='store_true', help='only save final checkpoint')
