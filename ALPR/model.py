@@ -14,15 +14,26 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision.io import read_image
 from torchvision import transforms
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor, FasterRCNN_ResNet50_FPN_Weights
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor, FasterRCNN
 
 
 def load_model(num_classes):
     model = fasterrcnn_resnet50_fpn(progress=True, num_classes=num_classes)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+    box_predictor = FastRCNNPredictor(in_features, num_classes)
+    model = LPFasterRCNN(num_classes)
+    model.roi_heads.box_predictor = box_predictor
     return model
 
+class LPFasterRCNN(FasterRCNN):
+    def __init__(self, num_classes):
+        super().__init__()
+        # in_features = self.roi_heads.box_predictor.cls_score.in_features
+        # self.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+        
+        
+    def forward(self, image , target):
+        return super().forward(image , target)
 
 class LPImageDataset(Dataset):
     def __init__(self, data_dir, annotations_file, device="cpu"):
@@ -33,17 +44,15 @@ class LPImageDataset(Dataset):
             label: idx for idx, label in enumerate(self.annotations.iloc[:, 5].unique())
         }
         self.key_to_label = {idx: label for label, idx in self.label_to_key.items()}
-        self.annotations.iloc[:, 5] = self.annotations.iloc[:, 5].map(
-            self.label_to_key
-        )
+        self.annotations.iloc[:, 5] = self.annotations.iloc[:, 5].map(self.label_to_key)
         self.num_classes = len(self.label_to_key)
-        # self.transform = transforms.Compose([
-        #     transforms.Grayscale(3),
-        # #     transforms.Lambda(lambd=resize_with_pad),
-        #     transforms.Resize(76,max_size=768),
-        #     transforms.ToTensor(),
-        #     transforms.ConvertImageDtype(torch.float)
-        # ])
+        self.transform = transforms.Compose([
+            transforms.Grayscale(3),
+        #     transforms.Lambda(lambd=resize_with_pad),
+            transforms.Resize(76,max_size=768),
+            transforms.ToTensor(),
+            transforms.ConvertImageDtype(torch.float)
+        ])
         self.device = device
 
     def __len__(self):
@@ -52,14 +61,18 @@ class LPImageDataset(Dataset):
     def __getitem__(self, idx):
         img_path = os.path.join(self.data_dir, self.images[idx])
         image = read_image(img_path).to(self.device)
-        # image = self.transform(image)
-        image = image.float() / 255.0
-        img_annotation = self.annotations[self.annotations['filename'].str.contains(self.images[idx])]
+        image = self.transform(image)
+        # image = image.float() / 255.0
+        img_annotation = self.annotations[
+            self.annotations["filename"].str.contains(self.images[idx])
+        ]
         annotation = {
             "boxes": torch.tensor(
                 img_annotation.iloc[:, 1:5].to_numpy(dtype=np.int64)
             ).to(self.device),
-            "labels": torch.tensor(img_annotation.iloc[:, 5].to_numpy(dtype=np.int64)).to(self.device),
+            "labels": torch.tensor(
+                img_annotation.iloc[:, 5].to_numpy(dtype=np.int64)
+            ).to(self.device),
         }
         return image, annotation
 
@@ -115,7 +128,7 @@ def single_label_collate_fn(batch):
     return tensors, targets
 
 
-def training_loop(model: nn.Module, train_loader: DataLoader, device="cpu", epochs=50, lr=0.001, step_size=10, save_filename=''):
+def training_loop(model: FasterRCNN, train_loader: DataLoader, device="cpu", epochs=50, lr=0.001, step_size=10, save_filename=''):
     # Define optimizer and learning rate scheduler
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=0.1)
@@ -254,7 +267,7 @@ def compute_ap(precision, recall):
     return ap
 
 
-def calculate_metrics(model:nn.Module, test_loader):
+def calculate_metrics(model:FasterRCNN, test_loader):
     # model.eval()
     mAPs = []
 
