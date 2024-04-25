@@ -1,48 +1,52 @@
 import argparse
-import os
-import time
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from model import *
-from preprocess import to_csv, show_bbox
-from pathlib import Path
-import numpy as np
 from torchvision.models.detection.faster_rcnn import FasterRCNN
 from torchvision.io import read_image
+# from preprocess import to_csv, show_bbox
+# from pathlib import Path
+# import numpy as np
+# import os
+# import time
 
-def predict(args, model:nn.Module):
+def predict(image:str, model:FasterRCNN, device:str):
     model.eval()
-    args.image
-    image = read_image(args.image).to(args.device).float() / 255.0
+    image = read_image(image).to(device).float() / 255.0
     pred = model([image])
     print(pred)
-    
+        
 
-def test(args, model:nn.Module, dataset):
+def test(args, model:FasterRCNN, dataset):
     model.eval()
     data_loader = DataLoader(
         dataset,
         batch_size=1,
         shuffle=False,
-        collate_fn=custom_collate_fn,
+        collate_fn=single_label_collate_fn,
     )
-    avg_mAP = calculate_metrics(model, data_loader)
+    avg_mAP, avg_p, avg_r = calculate_metrics(model, data_loader)
     print(f"Average MAP: {avg_mAP}")
+    print(f"Average Precision: {avg_p}")
+    print(f'Average Recall: {avg_r}')
 
 
-def validate(args, model:nn.Module, dataset):
+def validate(args, model:FasterRCNN, dataset):
     data_loader = DataLoader(
         dataset,
         batch_size=args.batch_size,
         shuffle=True,
-        collate_fn=custom_collate_fn,
+        collate_fn=single_label_collate_fn,
     )
     model.eval()
-    avg_mAP = calculate_metrics(model, data_loader)
+    avg_mAP, avg_p, avg_r = calculate_metrics(model, data_loader)
     print(f"Average MAP: {avg_mAP}")
+    print(f"Average Precision: {avg_p}")
+    print(f'Average Recall: {avg_r}')
 
 
-def train(args, model:nn.Module, dataset):
+def train(args, model:FasterRCNN, dataset):
     # Load data
     data_loader = DataLoader(
         dataset,
@@ -83,7 +87,6 @@ def setup(args):
         model.to(device=args.device)
         model.load_state_dict(torch.load(args.weight_file))
         return predict(args, model)
-
 
     # Load data
     dataset = LPImageDataset(
@@ -139,7 +142,7 @@ if __name__ == "__main__":
     parser.add_argument("--device", default="cpu", help="cuda or cpu")
     parser.add_argument(
         "--step_size",
-        type=float,
+        type=int,
         default=10,
         help="the number steps for the optimizer to apply learning rate decay",
     )
