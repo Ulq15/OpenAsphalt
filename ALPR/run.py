@@ -1,4 +1,8 @@
 import argparse
+<<<<<<< Updated upstream
+=======
+from sympy import false
+>>>>>>> Stashed changes
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -13,8 +17,13 @@ from torchvision.io import read_image
 
 def predict(image:str, model:FasterRCNN, device:str):
     model.eval()
+<<<<<<< Updated upstream
     image = read_image(image).to(device).float() / 255.0
     pred = model([image])
+=======
+    img = read_image(image).to(device).float() / 255.0
+    pred = model(img)
+>>>>>>> Stashed changes
     print(pred)
         
 
@@ -28,8 +37,13 @@ def test(args, model:FasterRCNN, dataset):
     )
     avg_mAP, avg_p, avg_r = calculate_metrics(model, data_loader)
     print(f"Average MAP: {avg_mAP}")
+<<<<<<< Updated upstream
     print(f"Average Precision: {avg_p}")
     print(f'Average Recall: {avg_r}')
+=======
+    # print(f"Average Precision: {avg_p}")
+    # print(f'Average Recall: {avg_r}')
+>>>>>>> Stashed changes
 
 
 def validate(args, model:FasterRCNN, dataset):
@@ -42,8 +56,13 @@ def validate(args, model:FasterRCNN, dataset):
     model.eval()
     avg_mAP, avg_p, avg_r = calculate_metrics(model, data_loader)
     print(f"Average MAP: {avg_mAP}")
+<<<<<<< Updated upstream
     print(f"Average Precision: {avg_p}")
     print(f'Average Recall: {avg_r}')
+=======
+    # print(f"Average Precision: {avg_p}")
+    # print(f'Average Recall: {avg_r}')
+>>>>>>> Stashed changes
 
 
 def train(args, model:FasterRCNN, dataset):
@@ -54,11 +73,22 @@ def train(args, model:FasterRCNN, dataset):
         shuffle=True,
         collate_fn=multilabel_collate_fn,
     )
-
-    model.train()
+    
+    val_loader = DataLoader(
+        LPImageDataset(
+            args.dataset + "valid\\",
+            args.dataset + "valid\\annotations.csv",
+            device=args.device,
+        ),
+        batch_size=args.batch_size,
+        shuffle=True,
+        collate_fn=multilabel_collate_fn
+    )
+    
     training_loop(
         model,
         data_loader,
+        val_loader=val_loader,
         device=args.device,
         epochs=args.epochs,
         lr=args.lr,
@@ -86,8 +116,13 @@ def setup(args):
         model = torch.load(args.model_file)
         model.to(device=args.device)
         model.load_state_dict(torch.load(args.weight_file))
+<<<<<<< Updated upstream
         return predict(args, model)
 
+=======
+        return predict(args.image, model, args.device)
+    
+>>>>>>> Stashed changes
     # Load data
     dataset = LPImageDataset(
         args.dataset + f"{args.mode}\\",
@@ -96,10 +131,10 @@ def setup(args):
     )
 
     # Load model
-    if args.model_file:
-        model = torch.load(args.model_file)
-    else:
-        model:FasterRCNN = load_model(dataset.num_classes)
+    # if args.model_file:
+    #     model = torch.load(args.model_file)
+    # else:
+    model = load_model(dataset.num_classes)
     model.to(args.device)
 
     # Check for weights file
