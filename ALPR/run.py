@@ -1,8 +1,5 @@
 import argparse
-<<<<<<< Updated upstream
-=======
 from sympy import false
->>>>>>> Stashed changes
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -17,15 +14,10 @@ from torchvision.io import read_image
 
 def predict(image:str, model:FasterRCNN, device:str):
     model.eval()
-<<<<<<< Updated upstream
-    image = read_image(image).to(device).float() / 255.0
-    pred = model([image])
-=======
     img = read_image(image).to(device).float() / 255.0
     pred = model(img)
->>>>>>> Stashed changes
     print(pred)
-        
+    
 
 def test(args, model:FasterRCNN, dataset):
     model.eval()
@@ -35,15 +27,10 @@ def test(args, model:FasterRCNN, dataset):
         shuffle=False,
         collate_fn=single_label_collate_fn,
     )
-    avg_mAP, avg_p, avg_r = calculate_metrics(model, data_loader)
+    avg_mAP = calculate_metrics(model, data_loader)
     print(f"Average MAP: {avg_mAP}")
-<<<<<<< Updated upstream
-    print(f"Average Precision: {avg_p}")
-    print(f'Average Recall: {avg_r}')
-=======
     # print(f"Average Precision: {avg_p}")
     # print(f'Average Recall: {avg_r}')
->>>>>>> Stashed changes
 
 
 def validate(args, model:FasterRCNN, dataset):
@@ -54,15 +41,10 @@ def validate(args, model:FasterRCNN, dataset):
         collate_fn=single_label_collate_fn,
     )
     model.eval()
-    avg_mAP, avg_p, avg_r = calculate_metrics(model, data_loader)
+    avg_mAP = calculate_metrics(model, data_loader)
     print(f"Average MAP: {avg_mAP}")
-<<<<<<< Updated upstream
-    print(f"Average Precision: {avg_p}")
-    print(f'Average Recall: {avg_r}')
-=======
     # print(f"Average Precision: {avg_p}")
     # print(f'Average Recall: {avg_r}')
->>>>>>> Stashed changes
 
 
 def train(args, model:FasterRCNN, dataset):
@@ -116,13 +98,8 @@ def setup(args):
         model = torch.load(args.model_file)
         model.to(device=args.device)
         model.load_state_dict(torch.load(args.weight_file))
-<<<<<<< Updated upstream
-        return predict(args, model)
-
-=======
         return predict(args.image, model, args.device)
     
->>>>>>> Stashed changes
     # Load data
     dataset = LPImageDataset(
         args.dataset + f"{args.mode}\\",
