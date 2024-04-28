@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from model import *
+from torchvision.transforms import Compose, Resize, Grayscale
 from torchvision.models.detection.faster_rcnn import FasterRCNN
 from torchvision.io import read_image
 # from preprocess import to_csv, show_bbox
@@ -14,7 +15,9 @@ from torchvision.io import read_image
 
 def predict(image:str, model:FasterRCNN, device:str):
     model.eval()
-    img = read_image(image).to(device).float() / 255.0
+    transform = Compose([Grayscale(3),Resize(768, max_size=800)])
+    img = read_image(image).to(device)
+    img = transform(img)
     pred = model(img)
     print(pred)
     
@@ -29,8 +32,6 @@ def test(args, model:FasterRCNN, dataset):
     )
     avg_mAP = calculate_metrics(model, data_loader)
     print(f"Average MAP: {avg_mAP}")
-    # print(f"Average Precision: {avg_p}")
-    # print(f'Average Recall: {avg_r}')
 
 
 def validate(args, model:FasterRCNN, dataset):
@@ -43,8 +44,6 @@ def validate(args, model:FasterRCNN, dataset):
     model.eval()
     avg_mAP = calculate_metrics(model, data_loader)
     print(f"Average MAP: {avg_mAP}")
-    # print(f"Average Precision: {avg_p}")
-    # print(f'Average Recall: {avg_r}')
 
 
 def train(args, model:FasterRCNN, dataset):
@@ -94,12 +93,6 @@ def setup(args):
         torch.cuda.empty_cache()
     # print(f"Using {args.device} device")
 
-    if args.mode == "pred":
-        model = torch.load(args.model_file)
-        model.to(device=args.device)
-        model.load_state_dict(torch.load(args.weight_file))
-        return predict(args.image, model, args.device)
-    
     # Load data
     dataset = LPImageDataset(
         args.dataset + f"{args.mode}\\",
@@ -107,12 +100,12 @@ def setup(args):
         device=args.device,
     )
 
-    # Load model
-    # if args.model_file:
-    #     model = torch.load(args.model_file)
-    # else:
     model = load_model(dataset.num_classes)
     model.to(args.device)
+
+    if args.mode == "pred":
+        model.load_state_dict(torch.load(args.weight_file))
+        return predict(args.image, model, args.device)
 
     # Check for weights file
     if args.weight_file:
