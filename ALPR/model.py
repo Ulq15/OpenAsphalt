@@ -21,24 +21,11 @@ def load_model(num_classes):
     model = fasterrcnn_resnet50_fpn(progress=True, num_classes=num_classes)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     box_predictor = FastRCNNPredictor(in_features, num_classes)
-<<<<<<< Updated upstream
-    model = LPFasterRCNN(num_classes)
-=======
     backbone = model.backbone
     model = LPFasterRCNN(backbone, num_classes)
->>>>>>> Stashed changes
     model.roi_heads.box_predictor = box_predictor
     return model
 
-class LPFasterRCNN(FasterRCNN):
-    def __init__(self, num_classes):
-        super().__init__()
-        # in_features = self.roi_heads.box_predictor.cls_score.in_features
-        # self.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
-        
-        
-    def forward(self, image , target):
-        return super().forward(image , target)
 
 class LPFasterRCNN(FasterRCNN):
     def __init__(self, backbone, num_classes):
@@ -52,33 +39,19 @@ class LPImageDataset(Dataset):
     def __init__(self, data_dir, annotations_file, device="cpu"):
         self.data_dir = data_dir
         self.annotations = pd.read_csv(annotations_file)
-<<<<<<< Updated upstream
-        self.images = self.annotations.iloc[:, 0].unique()
-=======
         self.images: list[str] = self.annotations.iloc[:, 0].unique().tolist()
->>>>>>> Stashed changes
         self.label_to_key = {
             label: idx for idx, label in enumerate(self.annotations.iloc[:, 5].unique())
         }
         self.key_to_label = {idx: label for label, idx in self.label_to_key.items()}
         self.annotations.iloc[:, 5] = self.annotations.iloc[:, 5].map(self.label_to_key)
         self.num_classes = len(self.label_to_key)
-<<<<<<< Updated upstream
-        self.transform = transforms.Compose([
-            transforms.Grayscale(3),
-        #     transforms.Lambda(lambd=resize_with_pad),
-            transforms.Resize(76,max_size=768),
-            transforms.ToTensor(),
-            transforms.ConvertImageDtype(torch.float)
-        ])
-=======
         self.transform = transforms.Compose(
             [
                 transforms.Grayscale(3),
                 transforms.Resize(768, max_size=800)
             ]
         )
->>>>>>> Stashed changes
         self.device = device
 
     def __len__(self):
@@ -87,12 +60,7 @@ class LPImageDataset(Dataset):
     def __getitem__(self, idx):
         img_path = os.path.join(self.data_dir, self.images[idx])
         image = read_image(img_path).to(self.device)
-<<<<<<< Updated upstream
-        image = self.transform(image)
-        # image = image.float() / 255.0
-=======
         image = self.transform(image) / 255.0
->>>>>>> Stashed changes
         img_annotation = self.annotations[
             self.annotations["filename"].str.contains(self.images[idx])
         ]
@@ -134,13 +102,8 @@ class UnlabeledLPImageDataset(Dataset):
 
 
 def multilabel_collate_fn(batch):
-<<<<<<< Updated upstream
-    boxes = [sample["boxes"] for _, sample in batch]
-    labels = [sample["labels"] for _, sample in batch]
-=======
     boxes = [annotation["boxes"] for _, annotation in batch]
     labels = [annotation["labels"] for _, annotation in batch]
->>>>>>> Stashed changes
     targets = [
         {
             "boxes": box.clone().detach(),
@@ -148,14 +111,6 @@ def multilabel_collate_fn(batch):
         }
         for box, label in zip(boxes, labels)
     ]
-<<<<<<< Updated upstream
-    tensors = torch.stack([sample for sample, _ in batch])
-    return tensors, targets
-
-def single_label_collate_fn(batch):
-    boxes = [sample["boxes"] for _, sample in batch]
-    labels = [sample["labels"] for _, sample in batch]
-=======
     tensors = torch.stack([image for image, _ in batch])
     return tensors, targets
 
@@ -163,7 +118,6 @@ def single_label_collate_fn(batch):
 def single_label_collate_fn(batch):
     boxes = [annotation["boxes"] for _, annotation in batch]
     labels = [annotation["labels"] for _, annotation in batch]
->>>>>>> Stashed changes
     targets = [
         {
             "boxes": box.clone().detach().reshape(1, len(box)),
@@ -175,11 +129,7 @@ def single_label_collate_fn(batch):
     return tensors, targets
 
 
-<<<<<<< Updated upstream
-def training_loop(model: FasterRCNN, train_loader: DataLoader, device="cpu", epochs=50, lr=0.001, step_size=10, save_filename=''):
-=======
 def training_loop(model: nn.Module, train_loader: DataLoader, val_loader: DataLoader, device="cpu", epochs=50, lr=0.001, step_size=10, save_filename=""):
->>>>>>> Stashed changes
     # Define optimizer and learning rate scheduler
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=0.1)
@@ -215,12 +165,6 @@ def training_loop(model: nn.Module, train_loader: DataLoader, val_loader: DataLo
             _validate(model, val_loader, epoch, num_epochs)
 
         if (epoch + 1) % step_size == 0:
-<<<<<<< Updated upstream
-            print(f"Saving model...")
-            torch.save(model, '.\\'+save_filename+'.m')
-            torch.save(model.state_dict(), ('.\\'+save_filename+'.w'))
-            print(f"Saving Done.")
-=======
             print(f"Saving model weights...")
             # torch.save(model, ".\\" + save_filename + ".m")
             torch.save(model.state_dict(), (".\\" + save_filename + ".w"))
@@ -233,7 +177,6 @@ def _validate(model:nn.Module, val_loader, epoch, num_epochs):
     print(f"Average mAP: {avg_mAP}")
 
     # Optionally, implement early stopping based on validation metrics
->>>>>>> Stashed changes
 
 
 def calculate_mAP(gt_boxes, gt_labels, pred_boxes, pred_scores, pred_labels, iou_threshold=0.5):
@@ -337,14 +280,9 @@ def compute_ap(precision, recall):
     return ap
 
 
-<<<<<<< Updated upstream
-def calculate_metrics(model:FasterRCNN, test_loader):
-    # model.eval()
-=======
 def calculate_metrics(model: nn.Module, data_loader):
     if model.training:
         model.eval()  # Set model to evaluation mode
->>>>>>> Stashed changes
     mAPs = []
 
     with torch.no_grad():
