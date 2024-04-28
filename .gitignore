@@ -46,6 +46,7 @@ env
 ALPR/processed_images/
 ALPR/images
 /ALPR/benchmarks
+<<<<<<< Updated upstream
 ALPR/model.pth
 ALPR/model
 *.pth
@@ -57,3 +58,13 @@ ALPR/model
 /ALPR/__pycache__
 ALPR/model_3.0
 >>>>>>> 598b712f9a56ec2b57046b87db0b4a386ebbb340
+=======
+/ALPR/_env_
+/ALPR/__pycache__
+/ALPR/weights
+/ALPR/node_modules
+/ALPR/package-lock.json
+/ALPR/package.json
+/ALPR/cv2
+/ALPR/env
+>>>>>>> Stashed changes
