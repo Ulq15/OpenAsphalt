@@ -21,7 +21,12 @@ def load_model(num_classes):
     model = fasterrcnn_resnet50_fpn(progress=True, num_classes=num_classes)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     box_predictor = FastRCNNPredictor(in_features, num_classes)
+<<<<<<< Updated upstream
     model = LPFasterRCNN(num_classes)
+=======
+    backbone = model.backbone
+    model = LPFasterRCNN(backbone, num_classes)
+>>>>>>> Stashed changes
     model.roi_heads.box_predictor = box_predictor
     return model
 
@@ -35,17 +40,30 @@ class LPFasterRCNN(FasterRCNN):
     def forward(self, image , target):
         return super().forward(image , target)
 
+class LPFasterRCNN(FasterRCNN):
+    def __init__(self, backbone, num_classes):
+        super().__init__(backbone=backbone, num_classes=num_classes)
+
+    def forward(self, image, target=None):
+        return super().forward(image, target)
+
+
 class LPImageDataset(Dataset):
     def __init__(self, data_dir, annotations_file, device="cpu"):
         self.data_dir = data_dir
         self.annotations = pd.read_csv(annotations_file)
+<<<<<<< Updated upstream
         self.images = self.annotations.iloc[:, 0].unique()
+=======
+        self.images: list[str] = self.annotations.iloc[:, 0].unique().tolist()
+>>>>>>> Stashed changes
         self.label_to_key = {
             label: idx for idx, label in enumerate(self.annotations.iloc[:, 5].unique())
         }
         self.key_to_label = {idx: label for label, idx in self.label_to_key.items()}
         self.annotations.iloc[:, 5] = self.annotations.iloc[:, 5].map(self.label_to_key)
         self.num_classes = len(self.label_to_key)
+<<<<<<< Updated upstream
         self.transform = transforms.Compose([
             transforms.Grayscale(3),
         #     transforms.Lambda(lambd=resize_with_pad),
@@ -53,6 +71,14 @@ class LPImageDataset(Dataset):
             transforms.ToTensor(),
             transforms.ConvertImageDtype(torch.float)
         ])
+=======
+        self.transform = transforms.Compose(
+            [
+                transforms.Grayscale(3),
+                transforms.Resize(768, max_size=800)
+            ]
+        )
+>>>>>>> Stashed changes
         self.device = device
 
     def __len__(self):
@@ -61,8 +87,12 @@ class LPImageDataset(Dataset):
     def __getitem__(self, idx):
         img_path = os.path.join(self.data_dir, self.images[idx])
         image = read_image(img_path).to(self.device)
+<<<<<<< Updated upstream
         image = self.transform(image)
         # image = image.float() / 255.0
+=======
+        image = self.transform(image) / 255.0
+>>>>>>> Stashed changes
         img_annotation = self.annotations[
             self.annotations["filename"].str.contains(self.images[idx])
         ]
@@ -82,14 +112,16 @@ class UnlabeledLPImageDataset(Dataset):
         self.data_dir = data_dir
         self.images = sorted(list(paths.list_images(data_dir)))
         self.device = device
-        self.transform = transforms.Compose([
-            transforms.Grayscale(3),
-            # transforms.Lambda(lambd=resize_with_pad),
-            # transforms.Resize(76,max_size=768),
-            # transforms.ToTensor(),
-            # transforms.ConvertImageDtype(torch.float)
-        ])
-        
+        self.transform = transforms.Compose(
+            [
+                transforms.Grayscale(3),
+                # transforms.Lambda(lambd=resize_with_pad),
+                # transforms.Resize(76,max_size=768),
+                # transforms.ToTensor(),
+                # transforms.ConvertImageDtype(torch.float)
+            ]
+        )
+
     def __len__(self):
         return len(self.images)
 
@@ -102,8 +134,13 @@ class UnlabeledLPImageDataset(Dataset):
 
 
 def multilabel_collate_fn(batch):
+<<<<<<< Updated upstream
     boxes = [sample["boxes"] for _, sample in batch]
     labels = [sample["labels"] for _, sample in batch]
+=======
+    boxes = [annotation["boxes"] for _, annotation in batch]
+    labels = [annotation["labels"] for _, annotation in batch]
+>>>>>>> Stashed changes
     targets = [
         {
             "boxes": box.clone().detach(),
@@ -111,12 +148,22 @@ def multilabel_collate_fn(batch):
         }
         for box, label in zip(boxes, labels)
     ]
+<<<<<<< Updated upstream
     tensors = torch.stack([sample for sample, _ in batch])
     return tensors, targets
 
 def single_label_collate_fn(batch):
     boxes = [sample["boxes"] for _, sample in batch]
     labels = [sample["labels"] for _, sample in batch]
+=======
+    tensors = torch.stack([image for image, _ in batch])
+    return tensors, targets
+
+
+def single_label_collate_fn(batch):
+    boxes = [annotation["boxes"] for _, annotation in batch]
+    labels = [annotation["labels"] for _, annotation in batch]
+>>>>>>> Stashed changes
     targets = [
         {
             "boxes": box.clone().detach().reshape(1, len(box)),
@@ -124,23 +171,26 @@ def single_label_collate_fn(batch):
         }
         for box, label in zip(boxes, labels)
     ]
-    tensors = torch.stack([sample for sample, _ in batch])
+    tensors = torch.stack([image for image, _ in batch])
     return tensors, targets
 
 
+<<<<<<< Updated upstream
 def training_loop(model: FasterRCNN, train_loader: DataLoader, device="cpu", epochs=50, lr=0.001, step_size=10, save_filename=''):
+=======
+def training_loop(model: nn.Module, train_loader: DataLoader, val_loader: DataLoader, device="cpu", epochs=50, lr=0.001, step_size=10, save_filename=""):
+>>>>>>> Stashed changes
     # Define optimizer and learning rate scheduler
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=0.1)
 
     # Training loop
-    model.train()
     num_epochs = epochs
     for epoch in range(num_epochs):
+        model.train()
         start = time.time()
-        running_loss = 0.0
-
-        print(f"=== Strating Epoch {epoch+1}/{num_epochs} ===")
+        running_loss = 0.0        
+        print(f"=== Starting Epoch {epoch+1}/{num_epochs} === @ ({time.strftime('%X')})")
         for images, targets in train_loader:
             images = Variable(images).to(device)
             optimizer.zero_grad()
@@ -155,15 +205,35 @@ def training_loop(model: FasterRCNN, train_loader: DataLoader, device="cpu", epo
 
         scheduler.step()
         epoch_loss = running_loss / len(train_loader)
+
         # Print training statistics
         print(f"Epoch {epoch+1}/{num_epochs}, Epoch Loss: {epoch_loss}")
-        print(f"({time.strftime('%X')}):: Epoch took about {int((time.time() - start)/60)} minutes to complete.")
+        print(f"({time.strftime('%X')}) Epoch took about {int((time.time() - start)/60)} minutes to complete.")
+
+        # Validation
+        if (epoch + 1) % step_size == 0:
+            _validate(model, val_loader, epoch, num_epochs)
 
         if (epoch + 1) % step_size == 0:
+<<<<<<< Updated upstream
             print(f"Saving model...")
             torch.save(model, '.\\'+save_filename+'.m')
             torch.save(model.state_dict(), ('.\\'+save_filename+'.w'))
             print(f"Saving Done.")
+=======
+            print(f"Saving model weights...")
+            # torch.save(model, ".\\" + save_filename + ".m")
+            torch.save(model.state_dict(), (".\\" + save_filename + ".w"))
+
+
+def _validate(model:nn.Module, val_loader, epoch, num_epochs):
+    print(f" === Validation at Epoch {epoch+1}/{num_epochs} === @ ({time.strftime('%X')})")
+    model.eval()
+    avg_mAP  = calculate_metrics(model, val_loader)
+    print(f"Average mAP: {avg_mAP}")
+
+    # Optionally, implement early stopping based on validation metrics
+>>>>>>> Stashed changes
 
 
 def calculate_mAP(gt_boxes, gt_labels, pred_boxes, pred_scores, pred_labels, iou_threshold=0.5):
@@ -217,7 +287,7 @@ def calculate_mAP(gt_boxes, gt_labels, pred_boxes, pred_scores, pred_labels, iou
 
     # Compute AP using precision-recall curve (area under curve)
     ap = compute_ap(precision, recall)
-    return ap
+    return ap #, precision, recall
 
 
 def compute_iou(box1, box2):
@@ -230,10 +300,10 @@ def compute_iou(box1, box2):
     Returns:
         iou (float): IoU value.
     """
-    x1 = max(box1[0], box2[:, 0])
-    y1 = max(box1[1], box2[:, 1])
-    x2 = min(box1[2], box2[:, 2])
-    y2 = min(box1[3], box2[:, 3])
+    x1 = max(box1[0], np.amax(box2[:, 0]))
+    y1 = max(box1[1], np.amax(box2[:, 1]))
+    x2 = min(box1[2], np.amin(box2[:, 2]))
+    y2 = min(box1[3], np.amin(box2[:, 3]))
 
     intersection = np.maximum(x2 - x1, 0) * np.maximum(y2 - y1, 0)
     area_box1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
@@ -267,12 +337,18 @@ def compute_ap(precision, recall):
     return ap
 
 
+<<<<<<< Updated upstream
 def calculate_metrics(model:FasterRCNN, test_loader):
     # model.eval()
+=======
+def calculate_metrics(model: nn.Module, data_loader):
+    if model.training:
+        model.eval()  # Set model to evaluation mode
+>>>>>>> Stashed changes
     mAPs = []
 
     with torch.no_grad():
-        for images, targets in test_loader:
+        for images, targets in data_loader:
             images = list(image for image in images)
             outputs = model(images)
 
