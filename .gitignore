@@ -48,3 +48,5 @@ ALPR/images
 ALPR/_env_
 ALPR/extra
 ALPR/node_*
+*.m
+*.w
