@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader, Dataset
-from model import LPImageDataset, load_model, training_loop, custom_collate_fn
+from model import LPImageDataset, load_model, training_loop, single_label_collate_fn
 from preprocess import to_csv
 
 # # Set device
@@ -14,7 +14,7 @@ torch.cuda.empty_cache() if device == "cuda" else None
 path = ".\\processed_images\\dheeraj.v17i\\train\\"
 data = LPImageDataset(path, path + "annotations.csv", device=device)
 train_loader = DataLoader(
-    data, batch_size=8, shuffle=True, collate_fn=custom_collate_fn
+    data, batch_size=8, shuffle=True, collate_fn=single_label_collate_fn
 )
 # test_data = (test_path)
 # test_loader = DataLoader(test_data, batch_size=2, shuffle=True)
@@ -26,7 +26,7 @@ model = load_model(data.num_classes)
 model.to(device)
 
 # # Train model
-training_loop(model, train_loader, device=device, epochs=50, lr=0.0001)
+training_loop(model, train_loader, val_loader=train_loader, device=device, epochs=50, lr=0.0001)
 
 # # Save model
 torch.save(model, ".\\model_3.0")
