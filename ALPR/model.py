@@ -20,10 +20,11 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor, FasterRC
 def load_model(num_classes):
     model = fasterrcnn_resnet50_fpn(progress=True, num_classes=num_classes)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
-    box_predictor = FastRCNNPredictor(in_features, num_classes)
-    backbone = model.backbone
-    model = LPFasterRCNN(backbone, num_classes)
-    model.roi_heads.box_predictor = box_predictor
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+    # box_predictor = FastRCNNPredictor(in_features, num_classes)
+    # backbone = model.backbone
+    # model = LPFasterRCNN(backbone, num_classes)
+    # model.roi_heads.box_predictor = box_predictor
     return model
 
 
