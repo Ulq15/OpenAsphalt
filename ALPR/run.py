@@ -1,5 +1,4 @@
 import argparse
-from sympy import false
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -7,20 +6,52 @@ from model import *
 from torchvision.transforms import Compose, Resize, Grayscale
 from torchvision.models.detection.faster_rcnn import FasterRCNN
 from torchvision.io import read_image
-# from preprocess import to_csv, show_bbox
+import cv2
+# from preprocess import show_bbox
 # from pathlib import Path
 # import numpy as np
 # import os
 # import time
 
-def predict(image:str, model:FasterRCNN, device:str):
-    model.eval()
-    transform = Compose([Grayscale(3),Resize(768, max_size=800)])
-    img = read_image(image).to(device)
-    img = transform(img)
-    pred = model(img)
-    print(pred)
+
+def show_bbox(image_path, boxes, labels, scores):
+    default = cv2.imread(image_path)
     
+    for box, label, score in zip(boxes,labels,scores):
+        if score <= 0.4:
+            continue
+        image = default.copy()
+        x = int(box[0])
+        y = int(box[1])
+        x2 = int(box[2])
+        y2 = int(box[3])
+        
+        cv2.rectangle(image, (x, y), (x2, y2), (0, 255, 0), 1)
+        cv2.putText(image, label, (x, y-35), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,255,0), 2)
+        cv2.putText(image, f'{score:.3f}', (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,255,0), 2)
+        cv2.imshow("Image", image)
+        cv2.waitKey(0)
+        
+    cv2.destroyAllWindows()
+
+def predict(image:str, model:FasterRCNN, device:str, dataset: LPImageDataset, show_img=False):
+    model.eval()
+    transform = Compose([Grayscale(3), Resize(768, max_size=800)])
+    img = read_image(image).to(device)
+    img = transform(img) / 255.0
+    pred = model([img])
+    # print(pred)
+    # print('='*50)
+    boxes = (pred[0]['boxes']).tolist()
+    labels = pred[0]['labels'].tolist()
+    scores = pred[0]['scores'].tolist()
+    keys = []
+    for l in labels:
+        keys.append(dataset.key_to_label[l])
+    show_bbox(image, boxes, keys, scores)
+    # for idx in range(len(labels)):
+    #     label = dataset.key_to_label[labels[idx].item()]
+    #     print(f"Box: {boxes[idx]}\nLabel: {label}, Confidence: {scores[idx]}")
 
 def test(args, model:FasterRCNN, dataset):
     model.eval()
@@ -93,6 +124,17 @@ def setup(args):
         torch.cuda.empty_cache()
     # print(f"Using {args.device} device")
 
+    if args.mode == "pred":
+        dataset = LPImageDataset(
+        args.dataset + f"train\\",
+        args.dataset + f"train\\annotations.csv",
+        device=args.device,
+    )
+        model = load_model(dataset.num_classes)
+        model.load_state_dict(torch.load(args.weight_file))
+        model.to(args.device)
+        return predict(args.image, model, args.device, dataset, True)
+
     # Load data
     dataset = LPImageDataset(
         args.dataset + f"{args.mode}\\",
@@ -102,10 +144,6 @@ def setup(args):
 
     model = load_model(dataset.num_classes)
     model.to(args.device)
-
-    if args.mode == "pred":
-        model.load_state_dict(torch.load(args.weight_file))
-        return predict(args.image, model, args.device)
 
     # Check for weights file
     if args.weight_file:
@@ -126,7 +164,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset",
         type=str,
-        default=".\\processed_images\\License_Plate_tensorflow\\",
+        default=".\\processed_images\\dheeraj.v17i\\",
         help="dataset directory",
     )
     parser.add_argument(
