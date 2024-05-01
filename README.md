@@ -1,7 +1,7 @@
 # OpenAsphalt
 
 - [OpenAsphalt](#openasphalt)
-  - [Getting Started](https://github.com/Ulq15/OpenAsphalt/wiki#getting-started)
+  - [Getting Started](./wiki#getting-started)
     - [Prerequisites](https://github.com/Ulq15/OpenAsphalt/wiki#prerequisites)
     - [Steps To Run The App](https://github.com/Ulq15/OpenAsphalt/wiki#steps-to-run-the-app)
     - [Steps To Run The Model](https://github.com/Ulq15/OpenAsphalt/wiki#steps-to-run-the-model)
