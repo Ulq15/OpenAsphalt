@@ -45,27 +45,6 @@ env
 .vscode
 ALPR/processed_images/
 ALPR/images
-/ALPR/benchmarks
-<<<<<<< Updated upstream
-ALPR/model.pth
-ALPR/model
-*.pth
-<<<<<<< HEAD
-*.m
-*.w
-=======
-/ALPR/_env_
-/ALPR/__pycache__
-ALPR/model_3.0
->>>>>>> 598b712f9a56ec2b57046b87db0b4a386ebbb340
-=======
-/ALPR/_env_
-/ALPR/__pycache__
-/ALPR/weights
-/ALPR/node_modules
-/ALPR/package-lock.json
-/ALPR/package.json
-/ALPR/cv2
-/ALPR/env
->>>>>>> Stashed changes
-/ALPR/extra
+ALPR/_env_
+ALPR/extra
+ALPR/node_*
